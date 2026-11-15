@@ -1,0 +1,17 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'org.roarin.durapomodoro'
+    compileSdk 33
+    defaultConfig {
+        applicationId 'org.roarin.durapomodoro'
+        minSdk 26
+        targetSdk 29
+        versionCode 11
+        versionName '0.1.11'
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}

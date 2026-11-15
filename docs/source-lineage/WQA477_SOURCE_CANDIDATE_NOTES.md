@@ -1,0 +1,4 @@
+# WQA477 — persisted generation reconciliation (experimental source)
+Derived from WQA475; originals preserved. Ordinary Activity launch and BOOT_COMPLETED reconcile any persisted active deadline/generation by reusing the same PendingIntent identity. A scheduling RuntimeException is logged and leaves the persisted deadline intact for a later launch/boot. Legacy migration schedules replacement before canceling legacy alarm. Expired deadlines use existing completion receiver.
+
+Limitations: this does not make UI and receiver state writes atomic; old pause/reset/next cancel-before-commit remains. A process termination after successful legacy generation commit is recovered on next launch, but stale legacy alarms are ignored. No Android SDK compile, emulator or handset verification. Notification durability and exact alarm permissions remain unverified.
