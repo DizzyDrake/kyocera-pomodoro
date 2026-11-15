@@ -15,7 +15,7 @@ android {
     buildTypes {
         debug {
             applicationIdSuffix '.preview'
-            manifestPlaceholders = [appLabel: 'Dura Pomodoro Preview']
+            manifestPlaceholders = [appLabel: 'Dura Pomodoro']
         }
         release {
             manifestPlaceholders = [appLabel: 'Dura Pomodoro']
