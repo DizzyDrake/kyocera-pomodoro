@@ -1,0 +1,14 @@
+# Local Android/Gradle build products
+.gradle/
+**/build/
+local.properties
+.idea/
+*.iml
+*.apk
+*.aab
+# Keystores and local signing credentials must never be committed
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
