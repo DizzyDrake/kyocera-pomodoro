@@ -1,0 +1,107 @@
+name: Build Dura Pomodoro
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK command-line tools
+        uses: android-actions/setup-android@v4
+
+      - name: Install Android SDK 33 and build tools
+        run: sdkmanager 'platforms;android-33' 'build-tools;33.0.2'
+
+      # The repository deliberately uses setup-gradle rather than a Gradle
+      # wrapper: no downloaded gradle-wrapper.jar is included in the archive.
+      - name: Install Gradle 7.6.4
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: '7.6.4'
+          cache-provider: basic
+
+      - name: Check source bundle
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Build debug APK
+        run: gradle --no-daemon --stacktrace :app:assembleDebug
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuraPomodoro-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      # When all four secrets exist, build an additional APK signed with a
+      # persistent owner-held key. Without secrets, the job remains usable.
+      - name: Check optional signing credentials
+        id: signing
+        shell: bash
+        env:
+          POMODORO_STORE_B64: ${{ secrets.DURAPOMODORO_KEYSTORE_B64 }}
+          POMODORO_STORE_PASS: ${{ secrets.DURAPOMODORO_KEYSTORE_PASSWORD }}
+          POMODORO_KEY_ALIAS: ${{ secrets.DURAPOMODORO_KEY_ALIAS }}
+          POMODORO_KEY_PASS: ${{ secrets.DURAPOMODORO_KEY_PASSWORD }}
+        run: |
+          if [[ -n "$POMODORO_STORE_B64" && -n "$POMODORO_STORE_PASS" && -n "$POMODORO_KEY_ALIAS" && -n "$POMODORO_KEY_PASS" ]]; then
+            echo 'enabled=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'enabled=false' >> "$GITHUB_OUTPUT"
+            echo 'Optional signed release skipped: four signing secrets are not all configured.'
+          fi
+
+      - name: Build unsigned release for personal signing
+        if: steps.signing.outputs.enabled == 'true'
+        run: gradle --no-daemon --stacktrace :app:assembleRelease
+
+      - name: Sign and verify personal release APK
+        if: steps.signing.outputs.enabled == 'true'
+        shell: bash
+        env:
+          POMODORO_STORE_B64: ${{ secrets.DURAPOMODORO_KEYSTORE_B64 }}
+          POMODORO_STORE_PASS: ${{ secrets.DURAPOMODORO_KEYSTORE_PASSWORD }}
+          POMODORO_KEY_ALIAS: ${{ secrets.DURAPOMODORO_KEY_ALIAS }}
+          POMODORO_KEY_PASS: ${{ secrets.DURAPOMODORO_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          store="$RUNNER_TEMP/durapomodoro-owner-signing.jks"
+          aligned="$RUNNER_TEMP/durapomodoro-aligned.apk"
+          trap 'rm -f "$store" "$aligned"' EXIT
+          printf '%s' "$POMODORO_STORE_B64" | base64 --decode > "$store"
+          test -s "$store"
+          tools="$ANDROID_SDK_ROOT/build-tools/33.0.2"
+          "$tools/zipalign" -f -p 4 app/build/outputs/apk/release/app-release-unsigned.apk "$aligned"
+          # apksigner reads passphrases from named env vars, never shell arguments.
+          export POMODORO_STORE_PASS POMODORO_KEY_PASS
+          mkdir -p app/build/outputs/apk/signed
+          "$tools/apksigner" sign --ks "$store" --ks-key-alias "$POMODORO_KEY_ALIAS" \
+            --ks-pass env:POMODORO_STORE_PASS --key-pass env:POMODORO_KEY_PASS \
+            --out app/build/outputs/apk/signed/DuraPomodoro-personal-release.apk "$aligned"
+          "$tools/apksigner" verify --verbose app/build/outputs/apk/signed/DuraPomodoro-personal-release.apk
+
+      - name: Upload personally signed APK
+        if: steps.signing.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuraPomodoro-personal-signed-apk
+          path: app/build/outputs/apk/signed/DuraPomodoro-personal-release.apk
+          if-no-files-found: error
+          retention-days: 30
