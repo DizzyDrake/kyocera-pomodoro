@@ -1,6 +1,6 @@
 # Optional persistent signing for upgradeable APKs
 
-A GitHub debug build runs without configuration, but GitHub-hosted runners may use a different debug certificate on later runs. Installing a new package with a different signer over the existing app fails on Android. **Choose one long-lived private signing key before your first personal release install** and reuse it for every future update. You may use an existing personally controlled Android APK signing keystore if its password and alias are known, or generate a distinct new key with `keytool`.
+A GitHub debug build runs without configuration, but GitHub-hosted runners may use a different debug certificate on later runs. Installing a new package with a different signer over the existing app fails on Android. The v0.2.1 **debug** APK now has the suffix `.preview` so it installs separately; this note about matching certificates applies to the signed **release** APK with the original application ID. **Choose one long-lived private signing key before your first personal release install** and reuse it for every future update. You may use an existing personally controlled Android APK signing keystore if its password and alias are known, or generate a distinct new key with `keytool`.
 
 Create four GitHub repository **Settings → Secrets and variables → Actions → Repository secrets** (spelling must match):
 
@@ -23,4 +23,4 @@ With all four secrets configured, Actions also produces `DuraPomodoro-personal-s
 
 ### Installing
 
-Copy the signed APK to the Kyocera and install through its normal package installer, or use `adb install -r DuraPomodoro-personal-release.apk` if ADB is connected. Updating works with the **same application ID, same signer, and an acceptable version code**. This package sets versionCode 11; bump this number when preparing a future release. If you already installed an earlier APK with a *different* signing identity, Android cannot overwrite it. Preserve any needed timer settings before considering uninstalling; uninstall clears app data. The next practical checks are in `DEVICE_TESTS.md`.
+Copy the signed APK to the Kyocera and install through its normal package installer, or use `adb install -r DuraPomodoro-personal-release.apk` if ADB is connected. Updating works with the **same application ID, same signer, and an acceptable version code**. The v0.2.1 signed release sets versionCode 13. The debug preview uses the separate `org.roarin.durapomodoro.preview` ID and does not upgrade the original. If you already installed an earlier APK with a *different* signing identity, Android cannot overwrite it. Preserve any needed timer settings before considering uninstalling; uninstall clears app data. The next practical checks are in `DEVICE_TESTS.md`.

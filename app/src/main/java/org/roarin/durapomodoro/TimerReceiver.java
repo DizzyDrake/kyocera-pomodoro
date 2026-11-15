@@ -60,21 +60,70 @@ public class TimerReceiver extends BroadcastReceiver {
  @Override public void onReceive(Context c,Intent i){
   SharedPreferences p=c.getSharedPreferences("timer",0);
   long end=p.getLong("end",0),generation=p.getLong("generation",0);
-  if(end==0||i==null||System.currentTimeMillis()+1000<end)return;
+  long now=System.currentTimeMillis();
+  if(end<=0||i==null||now<end)return;
   if(generation==0){
-   // A failed legacy migration commit must not disable the still-scheduled legacy alarm.
-   // Accept only the original legacy PendingIntent identity while persisted generation is zero.
    Intent legacy=new Intent(c,TimerReceiver.class);
    if(!legacy.filterEquals(i))return;
   }else{
-   // Once migration commits, no old unversioned alarm may complete the new timer.
    if(!alarmIntent(c,generation).filterEquals(i)||i.getLongExtra("generation",-1)!=generation)return;
   }
-  // Commit completion before posting notification; an unsuccessful commit leaves the deadline recoverable.
-  // Keep a durable delivery marker until notify() returns successfully.
+  String kind=p.getString("sessionKind",SessionPlan.MANUAL);
+  SessionPlan.Step[] plan=SessionPlan.selectedPlan(kind,p.getString("activePlan",null),p.getString("customPlan",null));
+  int position=p.getInt("sessionStep",0);
+  boolean advance=p.getBoolean("autoAdvance",true);
+  boolean autoStart=p.getBoolean("autoStart",true);
+  int currentMode=p.getInt("mode",0);
+
+  final SessionTimeline.Result out;
+  try{
+   // Based on the old absolute end, not the possibly late alarm delivery time.
+   // If multiple stages elapsed in Doze, catch up in one durable transaction.
+   out=SessionTimeline.resolve(plan,position,currentMode,end,now,advance,autoStart);
+  }catch(IllegalArgumentException corrupt){
+   android.util.Log.w("DuraPomodoro","Invalid saved session timeline; awaiting Reset",corrupt);
+   return;
+  }
+
   boolean requested=p.getBoolean("notify",true);
-  if(!p.edit().putLong("end",0).putLong("remaining",0).putBoolean("completionNotificationPending",requested).commit())return;
+  String completedLabel=SessionPlan.LABELS[out.lastCompletedKind];
+  String title=out.completedStages>1?out.completedStages+" Pomodoro stages finished":completedLabel+" finished";
+  String description;
+  long nextEnd=0,nextGeneration=0;
+  SharedPreferences.Editor e=p.edit().putLong("end",0).putLong("remaining",out.remainingMs)
+      .putBoolean("timerPaused",false)
+      .putBoolean("completionNotificationPending",requested)
+      .putString("pendingNotificationTitle",title);
+  if(plan!=null){
+   e.putInt("sessionStep",out.index).putInt("mode",out.kind).putBoolean("sessionDone",out.finished);
+  }
+  if(out.finished){
+   description="Full session complete";
+  }else if(out.advanced){
+   description=SessionPlan.LABELS[out.kind]+(out.nextDeadlineMs>0?" in progress":" ready — press Start");
+   if(out.nextDeadlineMs>0){
+    long next=Math.max(p.getLong("generationCounter",0),generation)+1;
+    if(next>0){
+     nextGeneration=next;
+     nextEnd=out.nextDeadlineMs;
+     e.putLong("generation",next).putLong("generationCounter",next).putLong("end",nextEnd);
+    }else description=SessionPlan.LABELS[out.kind]+" ready — press Start";
+   }
+  }else{
+   description="Press Next stage to continue";
+  }
+  if(out.completedStages>1)description=out.completedStages+" stages elapsed · "+description;
+  e.putString("pendingNotificationText",description);
+  // Commit one consistent new step before scheduling. A failed commit preserves
+  // the due old deadline so launch/boot reconciliation can safely retry.
+  if(!e.commit())return;
   retryPendingNotification(c);
+  if(nextEnd>0){
+   try{schedule(c,nextEnd,nextGeneration);}
+   catch(RuntimeException failure){
+    android.util.Log.w("DuraPomodoro","Auto next-stage alarm deferred; retry on app launch/boot",failure);
+   }
+  }
  }
  // At-least-once delivery: a crash between notify and clearing this flag may
  // repeat the sound on relaunch. A fixed notification ID avoids stacked cards.
@@ -89,7 +138,7 @@ public class TimerReceiver extends BroadcastReceiver {
   NotificationChannel ch=new NotificationChannel(channelId,"Pomodoro completion",NotificationManager.IMPORTANCE_HIGH);
   ch.enableVibration(vibration);ch.setSound(sound,new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION).build());nm.createNotificationChannel(ch);
   PendingIntent open=PendingIntent.getActivity(c,8,new Intent(c,MainActivity.class),PendingIntent.FLAG_UPDATE_CURRENT|PendingIntent.FLAG_IMMUTABLE);
-  Notification n=new Notification.Builder(c,channelId).setSmallIcon(android.R.drawable.ic_lock_idle_alarm).setContentTitle("Pomodoro finished").setContentText("Time for the next stage").setAutoCancel(true).setContentIntent(open).build();nm.notify(11,n);
+  Notification n=new Notification.Builder(c,channelId).setSmallIcon(android.R.drawable.ic_lock_idle_alarm).setContentTitle(p.getString("pendingNotificationTitle","Pomodoro finished")).setContentText(p.getString("pendingNotificationText","Time for the next stage")).setAutoCancel(true).setContentIntent(open).build();nm.notify(11,n);
    // A failed clear retains retry eligibility; no claim of exactly-once delivery.
    return p.edit().putBoolean("completionNotificationPending",false).commit();
   }catch(RuntimeException failure){

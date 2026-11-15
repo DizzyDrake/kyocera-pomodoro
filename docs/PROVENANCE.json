@@ -2,21 +2,42 @@
   "origin": "/FOSS/Kyocera Dura Pomodoro/Source Candidates/DuraPomodoro_v0.1.11_settings_validation_WQE144_SOURCE_CANDIDATE.zip",
   "original_zip_sha256": "0fc9eb78de4072bd2a4ad784f7bef354cb20ad83945a1cd8ea663327a4425386",
   "original_archive_files": 20,
-  "unchanged_source_hashes_sha256": {
-    "app/src/main/AndroidManifest.xml": "8844df9c7020d0aa770d1cd5c1d18448ad7f2cd5d2a2da65dbbbd3fda2c841ba",
-    "app/src/main/java/org/roarin/durapomodoro/BootReceiver.java": "32375975cad2ac5a01e205cc25b611372a12a23e6a93632b129c5819eb65f372",
-    "app/src/main/java/org/roarin/durapomodoro/MainActivity.java": "856d87a7d6ec1d12af6ec2422298b4365c197c256b6b7b531db9885760a2c825",
-    "app/src/main/java/org/roarin/durapomodoro/TimerReceiver.java": "ba63b6c5489d72c66f472d3c4fef7b2e1170881ad4ed1f32ac0b2513cba77181",
-    "build.gradle": "fd4af6dfc5c96ac5f6742b33878cb2a880e2a7803f41aebedf4e357f9e3091ff",
-    "settings.gradle": "b6f7adad7f8f1abb0b1f72031f88ef3a7e2d100f6d5e9e638652e750a731c2b3",
-    "gradle.properties": "4d4c82226865844bdc85391d907a383da4a35d3a3f5348985d5ec3997ab932fe"
-  },
   "modified_build_metadata": [
     "app/build.gradle",
     ".github/workflows/build.yml",
     "README.md"
   ],
   "date": "2026-11-15",
-  "android_build": "NOT_EXECUTED_NO_SDK_OR_NETWORK",
-  "package_type": "SOURCE_ONLY_GITHUB_ACTIONS_BUILD_PACKET"
+  "android_build": "NOT_EXECUTED_STUB_COMPILE_ONLY",
+  "package_type": "SOURCE_ONLY_GITHUB_ACTIONS_BUILD_PACKET",
+  "retained_baseline_hashes_sha256": {
+    "app/src/main/java/org/roarin/durapomodoro/BootReceiver.java": "32375975cad2ac5a01e205cc25b611372a12a23e6a93632b129c5819eb65f372",
+    "build.gradle": "fd4af6dfc5c96ac5f6742b33878cb2a880e2a7803f41aebedf4e357f9e3091ff",
+    "settings.gradle": "b6f7adad7f8f1abb0b1f72031f88ef3a7e2d100f6d5e9e638652e750a731c2b3",
+    "gradle.properties": "4d4c82226865844bdc85391d907a383da4a35d3a3f5348985d5ec3997ab932fe"
+  },
+  "modified_application_sources": [
+    "app/src/main/java/org/roarin/durapomodoro/MainActivity.java",
+    "app/src/main/java/org/roarin/durapomodoro/TimerReceiver.java",
+    "app/src/main/AndroidManifest.xml"
+  ],
+  "new_application_sources": [
+    "app/src/main/java/org/roarin/durapomodoro/SessionPlan.java",
+    "app/src/main/java/org/roarin/durapomodoro/SessionTimeline.java",
+    "app/src/main/java/org/roarin/durapomodoro/TimerEditPolicy.java"
+  ],
+  "based_on_integrated_zip_sha256": "20ed92b6f04366834c5e020e9a3fcb43c3e31c149a431561c032e46b645b1b8e",
+  "version": "0.2.1",
+  "on_device_evidence": "Owner v0.1.11 test positive; v0.2.0 and v0.2.1 not independently phone-tested",
+  "github_access": "Connector returned no accessible repositories; no live repository modified",
+  "debug_app_id": "org.roarin.durapomodoro.preview",
+  "release_app_id": "org.roarin.durapomodoro",
+  "debug_identity_design": "Owner safety: separate install, never overwrites existing app",
+  "correction_parent": "v0.2.0 GitHub full source packet preserved in Library; earlier tested baseline v0.1.11",
+  "corrections": [
+    "Anchor automatic deadlines to previous absolute deadline",
+    "Catch up past automatic stages in bounded pure-Java timeline",
+    "Update unpaused ready manual durations atomically",
+    "Stop UI 500ms polling onStop and restart onStart"
+  ]
 }

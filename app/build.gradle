@@ -7,8 +7,19 @@ android {
         applicationId 'org.roarin.durapomodoro'
         minSdk 26
         targetSdk 29
-        versionCode 11
-        versionName '0.1.11'
+        versionCode 13
+        versionName '0.2.1'
+    }
+    // Debug is a separate preview app. It cannot overwrite the owner's working
+    // v0.1.11 installation; only a matching-key signed release can upgrade it.
+    buildTypes {
+        debug {
+            applicationIdSuffix '.preview'
+            manifestPlaceholders = [appLabel: 'Dura Pomodoro Preview']
+        }
+        release {
+            manifestPlaceholders = [appLabel: 'Dura Pomodoro']
+        }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
