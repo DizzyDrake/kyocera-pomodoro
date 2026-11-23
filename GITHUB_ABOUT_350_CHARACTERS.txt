@@ -1,0 +1,1 @@
+Dura Pomodoro is a keypad-friendly focus and break timer for Android, designed for the Kyocera Dura. Use a manual timer, the classic 25–5–25–5–25–5–25–15 session, or your own custom routines. Choose sound and vibration alerts, and control sessions with physical buttons. Built by Aurora and GPT-6.
