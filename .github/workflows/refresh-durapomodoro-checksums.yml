@@ -1,0 +1,80 @@
+name: Prepare corrected Dura Pomodoro checksums
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prepare-manifest:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Check out the actual GitHub repository
+        uses: actions/checkout@v4
+
+      - name: Recalculate listed source-file hashes (no commit or code changes)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          from pathlib import Path
+
+          root = Path.cwd()
+          manifest = root / 'SHA256SUMS.txt'
+          if not manifest.is_file():
+              raise SystemExit('No root SHA256SUMS.txt; please inspect repository layout')
+
+          listed = {}
+          for line in manifest.read_text(encoding='utf-8').splitlines():
+              if not line.strip():
+                  continue
+              digest, sep, path = line.partition('  ')
+              if not sep or len(digest) != 64 or any(c not in '0123456789abcdefABCDEF' for c in digest):
+                  raise SystemExit(f'Malformed SHA256SUMS entry: {line!r}')
+              if not path or path in listed:
+                  raise SystemExit(f'Empty or duplicate SHA256SUMS path: {path!r}')
+              relative = Path(path)
+              if relative.is_absolute() or '..' in relative.parts or path == 'SHA256SUMS.txt':
+                  raise SystemExit(f'Invalid SHA256SUMS path: {path!r}')
+              listed[path] = digest.lower()
+
+          required = {
+              '.github/workflows/build.yml',
+              'app/build.gradle',
+              'app/src/main/java/org/roarin/durapomodoro/SessionPlan.java',
+              'tests/test_packet.py',
+          }
+          missing_entries = sorted(required - listed.keys())
+          if missing_entries:
+              raise SystemExit('Manifest is incomplete; missing entries: ' + ', '.join(missing_entries))
+
+          entries = []
+          changes = []
+          for path in sorted(listed):
+              file = root / path
+              if not file.is_file() or file.is_symlink():
+                  raise SystemExit(f'Listed file missing or a symlink: {path}')
+              actual = hashlib.sha256(file.read_bytes()).hexdigest()
+              entries.append(f'{actual}  {path}')
+              if actual != listed[path]:
+                  changes.append(path)
+
+          manifest.write_text('\n'.join(entries) + '\n', encoding='utf-8', newline='\n')
+          print(f'Prepared {len(entries)} verified file hashes from this GitHub checkout')
+          print(f'{len(changes)} previous hashes differed:')
+          for path in changes:
+              print('  ' + path)
+          print('No application files were modified; only SHA256SUMS.txt was regenerated in the runner.')
+          PY
+          python3 -m unittest discover -s tests -v
+
+      - name: Downloadable corrected checksum manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: DuraPomodoro-CORRECT-SHA256SUMS
+          path: SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
